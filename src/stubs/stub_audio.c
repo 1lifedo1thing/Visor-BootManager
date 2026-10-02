@@ -1,9 +1,10 @@
 /* stub_audio.c - stub when audio is compiled out */
 
 #include "menu_sound.h"
+#include "hda.h"
 
-int menu_sound_prepare(int enabled, CHAR16 *path) {
-    (void)enabled; (void)path;
+int menu_sound_prepare(int enabled, CHAR16 *path, UINTN volume) {
+    (void)enabled; (void)path; (void)volume;
     return 0;
 }
 

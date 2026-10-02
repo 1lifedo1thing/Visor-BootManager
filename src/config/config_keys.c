@@ -497,6 +497,10 @@ void apply_global(config_t *config, CHAR16 *key, CHAR16 *value) {
             if (config->menu_sound) efi_free_pool(config->menu_sound);
             config->menu_sound = dup_path(value);
         }
+    } else if (efi_strcmp(key, L"menu_sound_volume") == 0) {
+        UINTN v = parse_uint(value);
+        if (v > 100) v = 100;
+        config->menu_sound_volume = v;
     } else if (efi_strcmp(key, L"tpm") == 0 ||
                efi_strcmp(key, L"measure") == 0) {
         config->tpm = (*value == '1' || *value == 't' || *value == 'y');

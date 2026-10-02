@@ -113,6 +113,7 @@ typedef struct {
     UINTN   record_seconds;
     int     menu_sound_on;
     CHAR16 *menu_sound;
+    UINTN   menu_sound_volume;
     int     tpm;
     UINTN   tpm_pcr_config;
     UINTN   tpm_pcr_cmdline;

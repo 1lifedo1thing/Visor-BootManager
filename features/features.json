@@ -252,7 +252,7 @@
       "summary": "Boot sound through the HD Audio controller",
       "group": "Extras",
       "detail": "Plays a WAV when the menu opens. The HDA controller is x86 chipset hardware, so this is x86-only. It adds a DMA-programming driver to the pre-OS environment.",
-      "keys": ["menu_sound"],
+      "keys": ["menu_sound", "menu_sound_volume"],
       "entrykeys": [],
       "hotkeys": [],
       "cli": [],

@@ -341,7 +341,8 @@ EFI_STATUS efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table) {
 
         int rbd_played = rbd_check_and_play(&gui);
         if (!rbd_played &&
-            menu_sound_prepare(config.menu_sound_on, config.menu_sound)) {
+            menu_sound_prepare(config.menu_sound_on, config.menu_sound,
+                               config.menu_sound_volume)) {
             gui.sound_start = menu_sound_start;
             gui.sound_poll  = menu_sound_poll;
         }

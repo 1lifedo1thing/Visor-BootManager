@@ -724,6 +724,15 @@
       "description": "WAV played once at startup when no Return by Death event fires. On by default, but plays only when a path is set; 'off', '0', 'n' or 'f' silences it. Audio must be 16-bit PCM, at most 4 seconds; it is upsampled and played through the HDA controller.",
       "$ref": "#/$defs/path"
     },
+    "menu_sound_volume": {
+      "x-feature": "audio",
+      "x-group": "sound",
+      "description": "Playback volume for menu_sound, as a percentage of the recorded level. Applied in software by scaling the PCM samples, so it is independent of the firmware's mixer settings; 0 silences the sound and 100 plays it unattenuated. Values above 100 are clamped to 100 - the sound is never amplified.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 100
+    },
     "mouse": {
       "x-feature": "pointer",
       "x-group": "appearance",

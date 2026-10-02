@@ -137,6 +137,19 @@ INT16 *pcm_load_wav(CHAR16 *path, UINTN *frames_out) {
     return out;
 }
 
+void pcm_apply_volume(INT16 *pcm, UINTN frames, UINTN volume) {
+    if (!pcm || volume >= 100) return;
+
+    UINTN samples = frames * 2;
+    if (!volume) {
+        for (UINTN i = 0; i < samples; i++) pcm[i] = 0;
+        return;
+    }
+
+    for (UINTN i = 0; i < samples; i++)
+        pcm[i] = clamp16(((INT32)pcm[i] * (INT32)volume) / 100);
+}
+
 INT16 *pcm_pad_silence(INT16 *pcm, UINTN *frames, UINTN pad_frames) {
     if (*frames >= pad_frames) return pcm;
 
@@ -154,8 +167,8 @@ INT16 *pcm_pad_silence(INT16 *pcm, UINTN *frames, UINTN pad_frames) {
     return pad;
 }
 
-int menu_sound_prepare(int enabled, CHAR16 *path) {
-    if (!enabled || !path) return 0;
+int menu_sound_prepare(int enabled, CHAR16 *path, UINTN volume) {
+    if (!enabled || !path || !volume) return 0;
     if (g_menu_audio) return 1;
 
     UINTN frames = 0;
@@ -164,6 +177,8 @@ int menu_sound_prepare(int enabled, CHAR16 *path) {
         efi_log(L"sound: boot sound could not be loaded - silent");
         return 0;
     }
+
+    pcm_apply_volume(pcm, frames, volume);
 
     UINTN active = frames;
     pcm = pcm_pad_silence(pcm, &frames,

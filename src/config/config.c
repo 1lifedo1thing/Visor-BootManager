@@ -162,6 +162,7 @@ EFI_STATUS config_parse(config_t *config) {
     config->record_seconds = 3;
     config->menu_sound_on = 1;
     config->menu_sound = NULL;
+    config->menu_sound_volume = 100;
     config->tpm = 1;
     config->tpm_pcr_config = TPM_PCR_CONFIG_DEFAULT;
     config->tpm_pcr_cmdline = TPM_PCR_CMDLINE_DEFAULT;

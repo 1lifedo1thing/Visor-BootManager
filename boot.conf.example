@@ -580,10 +580,16 @@ background=\EFI\visor\backgrounds\default.png
 # Visor can play a .wav at startup while the menu initialises. The sound is
 # upsampled and played once through the built-in HDA controller; sounds longer
 # than 4 seconds are truncated at 4.
-#   menu_sound       = path       .wav played once at startup (on by default,
+#   menu_sound        = path      .wav played once at startup (on by default,
 #                                 but only plays when a path is set;
 #                                 off / 0 / n / f = silent)
+#   menu_sound_volume = 0-100     playback level as a percentage of the recorded
+#                                 volume (default 100 = unchanged). Applied by
+#                                 scaling the samples, so it is independent of
+#                                 the firmware mixer; 0 is silent and values
+#                                 above 100 clamp to 100 - never amplified.
 #menu_sound=\EFI\visor\bootsound.wav
+#menu_sound_volume=60
 
 # --- Boot Loader Interface (systemd) -----------------------------------------
 # Visor can export and honor the systemd Boot Loader Interface EFI variables so
