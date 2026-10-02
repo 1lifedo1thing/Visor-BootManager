@@ -129,7 +129,10 @@ int efi_file_exists_root(EFI_FILE_PROTOCOL *root, CHAR16 *path) {
 EFI_FILE_PROTOCOL* efi_open_dir(EFI_FILE_PROTOCOL *root, CHAR16 *path) {
     if (!root) return NULL;
     EFI_FILE_PROTOCOL *d = NULL;
-    if (EFI_ERROR(root->Open(root, &d, path, EFI_FILE_MODE_READ, 0)))
+    UINT64 t0 = arch_now_us();
+    EFI_STATUS s = root->Open(root, &d, path, EFI_FILE_MODE_READ, 0);
+    efi_log_slow(L"Open (resolving the directory itself)", t0);
+    if (EFI_ERROR(s))
         return NULL;
     return d;
 }
