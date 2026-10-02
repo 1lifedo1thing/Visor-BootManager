@@ -299,6 +299,7 @@ typedef struct gui_state {
     int     clock_date_format;
     int     clock_blur;
     int     clock_shadow;
+    int     clock_sync;
 
     INTN    clock_last_key;
 

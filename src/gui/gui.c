@@ -231,6 +231,7 @@ EFI_STATUS gui_init(gui_state_t *state) {
     state->clock_date_format = CLOCK_DATE_LONG;
     state->clock_blur = 0;
     state->clock_shadow = 1;
+    state->clock_sync = 0;
     state->clock_last_key = -1;
     state->clock_x = state->clock_y = 0;
     state->clock_w = state->clock_h = 0;

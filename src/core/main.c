@@ -298,6 +298,7 @@ EFI_STATUS efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table) {
     gui.clock_date_format = config.clock_date_format;
     gui.clock_blur       = config.clock_blur;
     gui.clock_shadow     = config.clock_shadow;
+    gui.clock_sync       = config.clock_sync;
     gui.screensaver      = config.screensaver;
     gui.ss_delay_ms      = config.screensaver_delay * 1000;
     gui.ss_blank_ms      = config.screensaver_blank * 1000;

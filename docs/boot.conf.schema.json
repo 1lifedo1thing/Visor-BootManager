@@ -298,6 +298,15 @@
       "$ref": "#/$defs/bool",
       "default": true
     },
+    "clock_sync": {
+      "x-feature": "clock",
+      "x-aliases": [
+        "clock_ntp"
+      ],
+      "description": "Apply the clock correction the OS publishes in \\EFI\\visor\\time.sync. UEFI has no time sync of its own, so on a machine where nothing writes the RTC back it free-runs and slowly diverges from real time while the OS hides it behind NTP. The file holds one signed integer, 'offset=<seconds>', meaning true time minus what the RTC reported; it is a difference rather than a timestamp because GetTime returns local time on some firmware and UTC on others and pre-OS cannot tell which. Off by default - install the publisher with 'visor time-sync --install', which also sets clock_sync=1 in boot.conf.",
+      "$ref": "#/$defs/bool",
+      "default": false
+    },
     "screensaver": {
       "x-feature": "screensaver",
       "x-group": "screensaver",

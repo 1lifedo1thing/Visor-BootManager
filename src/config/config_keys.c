@@ -464,6 +464,9 @@ void apply_global(config_t *config, CHAR16 *key, CHAR16 *value) {
         config->clock_blur = (*value == '1' || *value == 't' || *value == 'y');
     } else if (efi_strcmp(key, L"clock_shadow") == 0) {
         config->clock_shadow = (*value == '1' || *value == 't' || *value == 'y');
+    } else if (efi_strcmp(key, L"clock_sync") == 0 ||
+               efi_strcmp(key, L"clock_ntp") == 0) {
+        config->clock_sync = (*value == '1' || *value == 't' || *value == 'y');
     } else if (efi_strcmp(key, L"screensaver") == 0) {
 
         if (*value >= '2' && *value <= '9') {

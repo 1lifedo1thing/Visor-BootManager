@@ -71,6 +71,9 @@ Commands:
   clean [--all]                 Remove build outputs (--all also removes the
                                 ~/.cache/visor source checkout, with confirmation)
   studio [options]              Fetch and run the Visor Studio configurator locally
+  time-sync [options]           Report the gap between the hardware clock and the
+                                system clock, and publish the correction Visor
+                                uses for the menu clock (see Time sync options)
   doctor                        Check build/install dependencies
   help                          Show this help
 
@@ -144,6 +147,25 @@ Doctor options:
 Config validate options:
   --file PATH        Config file to validate
   --esp PATH         ESP mount point
+
+Time sync options:
+  (no options)       Report the gap between the hardware clock and the system
+                     clock and say which direction it is wrong in
+  --publish          Write \\EFI\\visor\\time.sync so Visor's menu clock
+                     applies the correction (needs clock_sync=1 in boot.conf)
+  --write-rtc        Write the system clock to the hardware clock, which stops
+                     the drift itself - and with it every other reader of the
+                     RTC: the OS boot time, logs, TLS, cron
+  --install          Install a systemd timer that publishes on boot and
+                     every --interval hours, and turns clock_sync=1 on
+  --remove           Remove that timer and the file it wrote
+  --utc              Treat the hardware clock as UTC when writing it back.
+                     Correct on a dual-boot machine whose other OS reads UTC;
+                     wrong if it reads local time. Only read as local by the
+                     offset maths either way, so it never affects --publish
+  --interval HOURS  Timer interval in hours (default: 6)
+  --no-config        Do not set clock_sync=1 in boot.conf
+  --esp PATH         ESP mount point (default: autodetect)
 
 Studio options:
   --update           Pull the latest Visor Studio before running
@@ -2037,6 +2059,306 @@ cmd_studio() {
     (cd "$dir" && exec env "${studio_env[@]}" uvicorn main:app --port "$port")
 }
 
+TIME_SYNC_DIR="/usr/local/lib/visor"
+TIME_SYNC_SCRIPT="$TIME_SYNC_DIR/time-sync"
+TIME_SYNC_UNIT="visor-time-sync"
+
+# What the hardware clock reads, as epoch seconds.
+#
+# hwclock --show ends in a timezone abbreviation (UTC, IST, CEST,
+# GMT+0530...). Handing that to date -d makes it try to resolve the
+# abbreviation, and when the system abbreviation is not one date knows, the
+# result is silently shifted by hours - an offset that is wrong in exactly the
+# direction that matters. Both sides are local time already, so the zone field
+# is dropped and never enters the arithmetic.
+rtc_epoch() {
+    local shown stripped
+    shown="$(run_root hwclock --get 2>/dev/null || true)"
+    [ -n "$shown" ] || shown="$(run_root hwclock --show 2>/dev/null || true)"
+    [ -n "$shown" ] || return 1
+
+    stripped="$(printf '%s\n' "$shown" | awk '{
+        if (NF >= 6) { $NF = ""; sub(/[[:space:]]+$/, "") }
+        print
+    }')"
+    # date -d "" does not fail, it quietly means "now" - which would turn an
+    # unreadable RTC into an offset measured against the system clock.
+    [ -n "$stripped" ] || return 1
+
+    LC_ALL=C date -d "$stripped" +%s 2>/dev/null
+}
+
+rtc_show() {
+    run_root hwclock --show 2>/dev/null || echo "unreadable"
+}
+
+fmt_offset() {
+    local n="$1"
+    if [ "$n" -eq 0 ]; then printf 'in sync'; return 0; fi
+    if [ "$n" -gt 0 ]; then printf 'the hardware clock is %d s behind' "$n"
+    else printf 'the hardware clock is %d s ahead' "$(( -n ))"; fi
+}
+
+# Written to the ESP and read by the firmware. An offset rather than a
+# timestamp on purpose: GetTime returns local time on some firmware and UTC on
+# others and pre-OS cannot tell which, so only a difference is safe.
+published=0
+
+publish_offset() {
+    local esp="$1" off="$2"
+    local dir="$esp/EFI/visor"
+    [ -d "$dir" ] || run_root mkdir -p "$dir" || return 1
+    printf 'offset=%s\n' "$off" | run_root tee "$dir/time.sync" >/dev/null || return 1
+    say "Wrote $dir/time.sync (offset=$off)"
+    published=1
+}
+
+# Standalone on purpose: the timer runs at boot with a minimal PATH and must not
+# depend on the visor CLI still being installed where it was.
+time_sync_script_body() {
+    cat <<'TIMESYNC'
+#!/bin/sh
+# Published by "visor time-sync --install". Reports the hardware clock error
+# into \EFI\visor\time.sync so the Visor menu clock can correct itself, and
+# optionally writes the hardware clock so it stops drifting.
+#
+# Self-contained: systemd gives a timer a minimal environment, and this has to
+# work at boot before anything is logged in.
+set -u
+
+WRITE_RTC=0
+USE_UTC=0
+for arg in "$@"; do
+    case "$arg" in
+        --write-rtc) WRITE_RTC=1 ;;
+        --utc)       USE_UTC=1 ;;
+    esac
+done
+
+ESP_GUID=c12a7328-f81f-11d2-ba4b-00a0c93ec93b
+
+# Only a vfat mountpoint counts. /boot being a mountpoint says nothing - on a
+# machine with a separate /boot/efi, /boot is mounted too and may well have an
+# EFI directory belonging to something else entirely.
+esp=""
+for m in /boot/efi /efi /boot; do
+    if mountpoint -q "$m" 2>/dev/null &&
+       [ "$(findmnt -Uno FSTYPE "$m" 2>/dev/null)" = vfat ]; then
+        esp="$m"
+        break
+    fi
+done
+[ -n "$esp" ] || esp="$(bootctl --print-esp-path 2>/dev/null || true)"
+
+mounted_here=0
+if [ -z "$esp" ] || [ ! -d "$esp/EFI" ]; then
+    # Not mounted, or mounted somewhere unhelpful. The ESP is usually not in
+    # fstab, so find the partition by type and mount it for the write.
+    esp="$(mktemp -d)"
+    dev="$(lsblk -no PATH,PARTTYPE 2>/dev/null | awk -v g="$ESP_GUID" '$2==g {print $1; exit}')"
+    if [ -z "$dev" ] || ! mount -t vfat "$dev" "$esp" 2>/dev/null; then
+        rmdir "$esp" 2>/dev/null
+        exit 0
+    fi
+    mounted_here=1
+fi
+
+if [ "$WRITE_RTC" = 1 ]; then
+    if [ "$USE_UTC" = 1 ]; then hwclock --systohc --utc >/dev/null 2>&1
+    else hwclock --systohc >/dev/null 2>&1; fi
+fi
+
+shown="$(LC_ALL=C hwclock --show 2>/dev/null || true)"
+# Drop hwclock's trailing zone abbreviation before parsing. date -d tries to
+# resolve it, and an abbreviation it does not know (IST, CEST, GMT+0530...)
+# silently shifts the result by hours - which would look exactly like a badly
+# drifting RTC. Both sides are local time already.
+shown="$(printf '%s\n' "$shown" | awk '{
+    if (NF >= 6) { $NF = ""; sub(/[[:space:]]+$/, "") }
+    print
+}')"
+
+# An unreadable RTC must leave the published file alone. date -d "" does not
+# fail - it quietly means "now" - so without this the timer would publish the
+# gap between two reads of the system clock and the menu would apply nonsense.
+[ -n "$shown" ] || exit 0
+
+rtc="$(LC_ALL=C date -d "$shown" +%s 2>/dev/null || true)"
+case "$rtc" in
+    ''|*[!0-9]*) exit 0 ;;
+esac
+
+if [ -n "${rtc:-}" ]; then
+    off=$(( $(date +%s) - rtc ))
+    if [ "$off" -gt 86400 ] || [ "$off" -lt -86400 ]; then
+        # Beyond a day this is a machine whose RTC needs fixing by hand, not a
+        # correction; the firmware ignores these too.
+        off=0
+    fi
+    printf 'offset=%s\n' "$off" > "$esp/EFI/visor/time.sync" 2>/dev/null || true
+fi
+
+if [ "$mounted_here" = 1 ]; then
+    umount "$esp" 2>/dev/null
+    rmdir "$esp" 2>/dev/null
+fi
+exit 0
+TIMESYNC
+}
+
+cmd_time_sync() {
+    local esp=""
+    local publish=0
+    local write_rtc=0
+    local install=0
+    local remove=0
+    local use_utc=0
+    local interval=6
+    local set_config=1
+
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --esp) esp="$(need_value "$1" "${2:-}")"; shift 2 ;;
+            --interval) interval="$(need_value "$1" "${2:-}")"; shift 2 ;;
+            --publish) publish=1; shift ;;
+            --write-rtc) write_rtc=1; shift ;;
+            --install) install=1; shift ;;
+            --remove) remove=1; shift ;;
+            --utc) use_utc=1; shift ;;
+            --no-config) set_config=0; shift ;;
+            -h|--help) usage; exit 0 ;;
+            *) die "unknown time-sync option: $1" ;;
+        esac
+    done
+
+    case "$interval" in
+        ''|*[!0-9]*) die "--interval needs a whole number of hours" ;;
+    esac
+    [ "$interval" -ge 1 ] || die "--interval must be at least 1"
+
+    if [ "$remove" = 1 ]; then
+        run_root rm -f "/etc/systemd/system/$TIME_SYNC_UNIT.service" \
+                        "/etc/systemd/system/$TIME_SYNC_UNIT.timer" \
+                        "$TIME_SYNC_SCRIPT"
+        run_root rmdir "$TIME_SYNC_DIR" 2>/dev/null
+        if command -v systemctl >/dev/null 2>&1; then
+            systemctl disable --now "$TIME_SYNC_UNIT.timer" >/dev/null 2>&1
+            run_root systemctl daemon-reload >/dev/null 2>&1
+        fi
+        say "Removed the Visor time-sync timer"
+        return 0
+    fi
+
+    command -v hwclock >/dev/null 2>&1 || die "hwclock is required (util-linux)"
+
+    local now rtc off
+    now="$(date +%s)"
+    rtc="$(rtc_epoch || true)"
+    [ -n "$rtc" ] || die "could not read the hardware clock - is /dev/rtc present?"
+    off=$(( now - rtc ))
+
+    say "System clock:  $(date -d "@$now")"
+    say "Hardware clock: $(rtc_show)"
+    say "Gap: $(fmt_offset "$off")"
+
+    if [ "$install" = 1 ]; then
+        run_root mkdir -p "$TIME_SYNC_DIR" || die "could not create $TIME_SYNC_DIR"
+        printf '%s\n' "$(time_sync_script_body)" | run_root tee "$TIME_SYNC_SCRIPT" >/dev/null \
+            || die "could not write $TIME_SYNC_SCRIPT"
+        run_root chmod 0755 "$TIME_SYNC_SCRIPT" || die "could not make $TIME_SYNC_SCRIPT runnable"
+
+        local rtc_arg=""
+        [ "$write_rtc" = 1 ] && rtc_arg=" --write-rtc"
+        [ "$use_utc" = 1 ] && rtc_arg="$rtc_arg --utc"
+
+        cat <<UNIT | run_root tee "/etc/systemd/system/$TIME_SYNC_UNIT.service" >/dev/null \
+            || die "could not write the service unit"
+[Unit]
+Description=Publish the RTC error for the Visor menu clock
+Documentation=man:hwclock(8)
+
+[Service]
+Type=oneshot
+ExecStart=$TIME_SYNC_SCRIPT$rtc_arg
+UNIT
+
+        cat <<UNIT | run_root tee "/etc/systemd/system/$TIME_SYNC_UNIT.timer" >/dev/null \
+            || die "could not write the timer unit"
+[Unit]
+Description=Keep the Visor menu clock corrected
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=${interval}h
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target
+UNIT
+
+        if command -v systemctl >/dev/null 2>&1; then
+            if run_root systemctl daemon-reload >/dev/null 2>&1 &&
+               run_root systemctl enable --now "$TIME_SYNC_UNIT.timer" >/dev/null 2>&1; then
+                say "Enabled $TIME_SYNC_UNIT.timer"
+            else
+                warn "systemctl could not enable the timer; start it with:"
+                warn "  sudo systemctl enable --now $TIME_SYNC_UNIT.timer"
+            fi
+        else
+            warn "systemd not found - the units are in place but nothing will run them"
+        fi
+        say "Installed $TIME_SYNC_UNIT.timer (every ${interval}h, and 2min after boot)"
+        publish=1
+    fi
+
+    if [ "$publish" = 1 ] || [ "$write_rtc" = 1 ]; then
+        esp="$(resolve_esp "$esp")"
+        [ -n "$esp" ] || die "could not find the ESP"
+        [ -d "$esp" ] || die "ESP not mounted: $esp"
+
+        if [ "$write_rtc" = 1 ]; then
+            if [ "$use_utc" = 1 ]; then say "Writing the system clock to the RTC as UTC"
+            else say "Writing the system clock to the RTC in local time"; fi
+            if [ "$use_utc" = 1 ]; then run_root hwclock --systohc --utc
+            else run_root hwclock --systohc; fi
+            local after
+            after="$(rtc_epoch)" || after=""
+            [ -n "$after" ] && say "Hardware clock now: $(rtc_show)"
+        fi
+
+        if [ "$publish" = 1 ]; then
+            if [ "$off" -gt 86400 ] || [ "$off" -lt -86400 ]; then
+                say "Gap is over a day - not publishing; that RTC needs fixing by hand"
+                say "Run 'sudo hwclock --systohc' once, then re-run this"
+            else
+                publish_offset "$esp" "$off"
+            fi
+        fi
+    fi
+
+    if [ "$set_config" = 1 ] && [ "$published" = 1 ]; then
+        esp="$(resolve_esp "$esp")"
+        local conf="$esp/EFI/visor/boot.conf"
+        if [ -f "$conf" ] && ! grep -qE '^[[:space:]]*clock_sync[[:space:]]*=' "$conf"; then
+            if run_root tee -a "$conf" >/dev/null <<'CONF'
+clock_sync=1
+CONF
+            then say "Added clock_sync=1 to $conf"; fi
+        elif [ -f "$conf" ]; then
+            say "clock_sync is already set in $conf"
+        fi
+    fi
+
+    if [ "$publish" = 0 ] && [ "$write_rtc" = 0 ] && [ "$install" = 0 ]; then
+        say ""
+        say "The menu clock reads the firmware RTC and nothing else. UEFI has no"
+        say "time sync of its own, so unless the OS writes the RTC back it drifts."
+        say "  --write-rtc   stop the drift (fixes every RTC reader, not just the menu)"
+        say "  --publish     correct the menu clock only"
+        say "  --install     do both on a timer, and turn clock_sync=1 on"
+    fi
+}
+
 main() {
     local cmd="${1:-help}"
     case "$cmd" in
@@ -2053,6 +2375,7 @@ main() {
         config) shift; cmd_config "$@" ;;
         clean) shift; cmd_clean "$@" ;;
         studio) shift; cmd_studio "$@" ;;
+        time-sync) shift; cmd_time_sync "$@" ;;
         doctor) shift; cmd_doctor "$@" ;;
         help|-h|--help|"") usage ;;
         *) die "unknown command: $cmd" ;;

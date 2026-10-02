@@ -1,5 +1,25 @@
-/* gui_clock.c - menu clock and date rendering (feature: clock) */
+/* gui_clock.c - menu clock and date rendering (feature: clock)
+ *
+ * The clock reads the firmware RTC and nothing else. UEFI has no time sync
+ * of its own - there is no SNTP client in the spec - so unless the OS writes
+ * the RTC back, the RTC free-runs on the board's oscillator and the menu
+ * slowly diverges from real time while the desktop hides it behind NTP.
+ *
+ * clock_sync=1 lets the OS publish the correction instead: it drops a signed
+ * "offset=<seconds>" in \EFI\visor\time.sync, meaning true time minus what
+ * the RTC reported, and every read below goes through clock_now(). The offset
+ * is deliberately relative rather than an absolute timestamp - GetTime()
+ * returns local time on some firmware and UTC on others and nothing in
+ * pre-OS says which, so a difference needs no timezone guess.
+ */
 #include "gui_internal.h"
+
+#define CLOCK_SYNC_FILE L"\\EFI\\visor\\time.sync"
+
+/* A correction bigger than this is a machine whose RTC lost its battery or
+ * never had a network - hours of skew is a clock to fix, months is a bogus
+ * file, and showing the bogus answer would be worse than showing the RTC. */
+#define CLOCK_SYNC_MAX  86400
 
 static UINTN clock_px(gui_state_t *state) {
     UINTN px = state->clock_size ? state->clock_size
@@ -30,6 +50,150 @@ static int day_of_week(UINTN y, UINTN m, UINTN d) {
     if (m < 1 || m > 12 || y < 1) return -1;
     if (m < 3) y -= 1;
     return (int)((y + y / 4 - y / 100 + y / 400 + (UINTN)t[m - 1] + d) % 7);
+}
+
+/* --- correction from the host ---------------------------------------------
+ * \EFI\visor\time.sync holds one signed integer: the seconds true time leads
+ * the RTC by, so positive means the RTC is behind. Parsed by hand rather than
+ * through the config parser because it is a single ASCII number written by the
+ * host, not a boot.conf line. */
+
+static int      g_sync_done;
+static INT64    g_sync_offset;
+
+static UINTN sync_keylen(const UINT8 *d, UINTN i, UINTN size, const char *key) {
+    UINTN n = 0;
+    while (key[n]) n++;
+    for (UINTN k = 0; k < n; k++)
+        if (i + k >= size || d[i + k] != (UINT8)key[k]) return 0;
+    return n;
+}
+
+static void sync_load(void) {
+    g_sync_done = 1;
+
+    efi_file_buffer_t *fb = efi_load_file(CLOCK_SYNC_FILE);
+    if (!fb) return;
+
+    const UINT8 *d = (const UINT8 *)fb->data;
+    UINTN size = fb->size;
+    UINTN klen = sizeof("offset=") - 1;
+
+    for (UINTN i = 0; i + klen <= size; i++) {
+        if (!sync_keylen(d, i, size, "offset=")) continue;
+        /* Has to start a line, so a "timeoffset=" key cannot match. */
+        if (i > 0 && d[i - 1] != '\n' && d[i - 1] != '\r') continue;
+
+        UINTN p = i + klen;
+        while (p < size && (d[p] == ' ' || d[p] == '\t')) p++;
+
+        INT64 sign = 1;
+        if (p < size && (d[p] == '-' || d[p] == '+')) {
+            if (d[p] == '-') sign = -1;
+            p++;
+        }
+        if (p >= size || d[p] < '0' || d[p] > '9') return;
+
+        INT64 v = 0;
+        int digits = 0;
+        while (p < size && d[p] >= '0' && d[p] <= '9') {
+            if (v <= CLOCK_SYNC_MAX) v = v * 10 + (d[p] - '0');
+            digits++;
+            p++;
+        }
+        if (!digits || v > CLOCK_SYNC_MAX) {
+            efi_log(L"WARN: time.sync offset out of range - ignoring it");
+            return;
+        }
+
+        g_sync_offset = sign * v;
+        CHAR16 msg[72];
+        SPrint(msg, sizeof(msg),
+               L"clock: time.sync correcting the RTC by %d s", (int)g_sync_offset);
+        efi_log(msg);
+        return;
+    }
+}
+
+static int clock_is_leap(UINTN y) {
+    return (y % 4 == 0 && y % 100 != 0) || (y % 400 == 0);
+}
+
+static UINTN clock_month_len(UINTN m, UINTN y) {
+    static const UINTN len[12] = { 31,28,31,30,31,30,31,31,30,31,30,31 };
+    if (m < 1 || m > 12) return 31;
+    if (m == 2 && clock_is_leap(y)) return 29;
+    return len[m - 1];
+}
+
+/* The date fields are only usable if the RTC handed back something sane. A
+ * board that has lost its battery reports 1900 or 0, and stepping that forward
+ * would give a plausible wrong date instead of an obviously broken one. */
+static int clock_date_ok(const EFI_TIME *t) {
+    return t->Year >= 1980 && t->Month >= 1 && t->Month <= 12 && t->Day >= 1;
+}
+
+static void clock_add_days(EFI_TIME *t, INT64 days) {
+    while (days > 0) {
+        INT64 room = (INT64)clock_month_len(t->Month, t->Year) - t->Day + 1;
+        if (room > days) { t->Day += (UINTN)days; return; }
+        days -= room;
+        if (++t->Month > 12) { t->Month = 1; t->Year++; }
+        t->Day = 1;
+    }
+    while (days < 0) {
+        INT64 back = (INT64)t->Day - 1;          /* left in this month */
+        if (back >= -days) { t->Day -= (UINTN)(-days); return; }
+        days += back;
+        if (t->Month > 1) t->Month--;
+        else { t->Month = 12; if (t->Year > 0) t->Year--; }
+        t->Day = clock_month_len(t->Month, t->Year);
+        days++;                                  /* and the boundary itself */
+    }
+}
+
+static INT64 clock_floor_div(INT64 a, INT64 b) {
+    INT64 q = a / b;
+    if (a % b && a < 0) q--;
+    return q;
+}
+
+/* Carry the correction through the time of day and then the date, so a clock
+ * hours out lands on the right hour *and* the right day. The whole offset goes
+ * through seconds-of-day and comes out the other side in one piece, which is
+ * what keeps the carries from interfering with each other - splitting it per
+ * field needs a signed floor division at every step.
+ *
+ * Nanosecond is deliberately untouched: the offset is whole seconds, so it can
+ * never change the fraction. */
+static void clock_apply(EFI_TIME *t, INT64 secs) {
+    INT64 sod = (INT64)t->Hour * 3600 + (INT64)t->Minute * 60 + t->Second;
+
+    INT64 days = clock_floor_div(sod + secs, 86400);
+    INT64 rem  = sod + secs - days * 86400;
+
+    t->Hour   = (UINTN)(rem / 3600);
+    t->Minute = (UINTN)(rem / 60 % 60);
+    t->Second = (UINTN)(rem % 60);
+
+    if (days) clock_add_days(t, days);
+}
+
+/* Every clock read goes through here, so the correction has exactly one
+ * application point. Nothing is cached beyond the offset itself: GetTime is
+ * cheap and a stale cache would be a second clock to drift. */
+static EFI_STATUS clock_now(gui_state_t *state, EFI_TIME *out) {
+    EFI_STATUS s = RT->GetTime(out, NULL);
+    if (EFI_ERROR(s)) return s;
+
+    if (!g_sync_done) {
+        if (state->clock_sync) sync_load();
+        else                  g_sync_done = 1;
+    }
+    if (g_sync_offset && clock_date_ok(out))
+        clock_apply(out, g_sync_offset);
+
+    return s;
 }
 
 static UINTN put2(CHAR16 *buf, UINTN at, UINTN v) {
@@ -189,7 +353,7 @@ int draw_clock_ex(gui_state_t *state, int frost) {
     if (!state->show_clock) return 0;
 
     EFI_TIME t;
-    if (EFI_ERROR(RT->GetTime(&t, NULL))) return 0;
+    if (EFI_ERROR(clock_now(state, &t))) return 0;
 
     CHAR16 time_buf[24], date_buf[48];
     INTN x, y, w, h, tx, dx, dy;
@@ -236,6 +400,6 @@ int draw_clock(gui_state_t *state) {
 int clock_needs_tick(gui_state_t *state) {
     if (!state->show_clock) return 0;
     EFI_TIME t;
-    if (EFI_ERROR(RT->GetTime(&t, NULL))) return 0;
+    if (EFI_ERROR(clock_now(state, &t))) return 0;
     return clock_key(state, &t) != state->clock_last_key;
 }

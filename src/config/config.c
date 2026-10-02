@@ -155,6 +155,7 @@ EFI_STATUS config_parse(config_t *config) {
     config->clock_date_format = CLOCK_DATE_LONG;
     config->clock_blur = 0;
     config->clock_shadow = 1;
+    config->clock_sync = 0;
     config->screensaver = 0;
     config->screensaver_delay = 60;
     config->screensaver_blank = 600;

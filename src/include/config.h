@@ -106,6 +106,7 @@ typedef struct {
     int     clock_date_format;
     int     clock_blur;
     int     clock_shadow;
+    int     clock_sync;
     int     screensaver;
     UINTN   screensaver_delay;
     UINTN   screensaver_blank;

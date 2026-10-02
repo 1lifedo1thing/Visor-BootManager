@@ -482,7 +482,27 @@ background=\EFI\visor\backgrounds\default.png
 #                                 as clock_date, but without the true/false toggle.
 #   clock_blur      = 0           frosted backing behind the clock text (default 0)
 #   clock_shadow    = 1           drop shadow for contrast (default 1)
-# Aliases: clock_size <-> clock_px, clock_position <-> clock_pos.
+#   clock_sync      = 0           apply the correction the OS publishes in
+#                                 \EFI\visor\time.sync (default 0).
+#
+# Why you might want it: the clock reads the firmware RTC and nothing else.
+# UEFI has no time sync of its own - there is no SNTP client in the spec - so
+# unless your OS writes the RTC back, the RTC free-runs on the board's
+# oscillator and the menu slowly diverges from real time while the desktop
+# hides it behind NTP. Most distros do not write the RTC: on a dual-boot
+# machine, storing local time in hardware breaks a UTC-based other OS.
+#
+# 'visor time-sync --install' publishes the offset from a systemd timer and
+# turns this on. That alone fixes the menu. Add --rtc to have the timer write
+# the hardware clock too, which fixes the drift itself and with it every
+# other consumer of the RTC - the OS's own boot time, logs, TLS, cron.
+#
+# The file holds one signed integer, 'offset=<seconds>', meaning true time
+# minus what the RTC reported. It is a difference rather than a timestamp
+# because GetTime returns local time on some firmware and UTC on others and
+# nothing in pre-OS can tell which. Offsets beyond a day are ignored: that is
+# a machine whose RTC needs fixing, not a correction.
+# Aliases: clock_size <-> clock_px, clock_position <-> clock_pos, clock_sync <-> clock_ntp.
 #clock_size=48
 #clock_px=48
 #clock_format=24h
@@ -493,6 +513,7 @@ background=\EFI\visor\backgrounds\default.png
 #clock_date_format=long
 #clock_blur=0
 #clock_shadow=1
+#clock_sync=0
 
 # --- Screensaver -------------------------------------------------------------
 # While the graphical menu is up Visor tracks input. After a period without

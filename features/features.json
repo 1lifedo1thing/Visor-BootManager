@@ -118,7 +118,7 @@
     "clock": {
       "summary": "On-screen clock",
       "group": "Graphics",
-      "detail": "Reads the firmware RTC and draws the time on the menu.",
+      "detail": "Reads the firmware RTC and draws the time on the menu. With clock_sync=1 it also applies the correction the OS publishes in \\EFI\\visor\\time.sync, for boards whose RTC drifts because nothing writes it back.",
       "keys": [
         "clock",
         "show_clock",
@@ -130,6 +130,7 @@
         "clock_date",
         "clock_date_format",
         "clock_shadow",
+        "clock_sync",
         "accent_clock"
       ],
       "entrykeys": [],
