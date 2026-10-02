@@ -106,6 +106,21 @@ Encrypt options:
   --no-config        Only print the boot.conf entry, never offer to append it
   --no-luks          Do not add luks=1 even if the running system uses LUKS
 
+Convert options:
+  --vbg              use VBG instead of MJPEG MP4
+  --out PATH         output file (default: <input>.mp4, or .vbg with --vbg)
+  --esp PATH         install directly into \EFI\visor\backgrounds on the ESP
+  --scale WxH|H      scale, e.g. 1920x1080 or 1080
+  --quality N        MJPEG/VBG keyframe quality 2–31 (default 3)
+  --force            overwrite existing output
+  --fps N            output fps (VBG; default: source rate)
+  --keyint N         frames between VBG keyframes (default: single keyframe)
+  --mv-range N       VBG motion search radius 0–127 (default 16)
+  --denoise SPEC     VBG temporal denoise (default mild; none to disable)
+  --threshold T      VBG per-channel dead zone
+  --qshift S         VBG residual quantizer 0–7
+  --tile N           VBG tile size power-of-two 4–64
+
 Uninstall options:
   --esp PATH         ESP mount point
   --cli-dir PATH     Directory to remove the host-side command from
