@@ -733,6 +733,30 @@
       "maximum": 100,
       "default": 100
     },
+    "cursor": {
+      "x-feature": "pointer",
+      "x-group": "appearance",
+      "x-aliases": [
+        "cursor_image"
+      ],
+      "description": "Pointer image, a PNG or BMP replacing the built-in white arrow; a bare name resolves under \\EFI\\visor\\. Use a square image with a transparent background - it is scaled to a single square size, so a non-square source gets squashed. 'default', 'arrow', 'none' or 'off' keeps the built-in one. Settable from a theme file, so a theme can ship its own pointer.",
+      "$ref": "#/$defs/path"
+    },
+    "cursor_hotspot": {
+      "x-feature": "pointer",
+      "x-group": "appearance",
+      "description": "Which pixel of the cursor image is the pointer: the one a click lands on. \"X,Y\" in image pixels measured from the top-left after cursor_size scaling, or 'center' for the middle - what a crosshair wants. 'topleft' and 'tip' mean 0,0.",
+      "default": "0,0"
+    },
+    "cursor_size": {
+      "x-feature": "pointer",
+      "x-group": "appearance",
+      "description": "Rendered edge length of the cursor image in pixels. 0 uses the image's own width. Clamped to 8-128. No effect on the built-in arrow.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 128,
+      "default": 0
+    },
     "mouse": {
       "x-feature": "pointer",
       "x-group": "appearance",
