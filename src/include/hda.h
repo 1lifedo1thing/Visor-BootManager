@@ -38,6 +38,13 @@ int   hda_play_end(void *handle);
 
 int hda_probe(void);
 
+/* Recording tap: the PCM buffer the controller is playing, how many frames of
+ * it are real sound rather than trailing pad, and the microsecond the stream
+ * started. Returns 0 when nothing is playing. Lets a screen recording capture
+ * whatever is audible - the boot sound or the easter egg - without either
+ * caller knowing the recorder exists. */
+int hda_tap(const INT16 **pcm, UINTN *frames, UINT64 *start_us);
+
 const CHAR16* hda_status_str(int code);
 
 #endif

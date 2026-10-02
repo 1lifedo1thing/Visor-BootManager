@@ -26,7 +26,7 @@
 # is always compiled - see CORE_SRC at the bottom.
 
 FEAT_ALL := gui fade screensaver blur clock pointer editor accent \
-            anim anim_gif anim_mp4 capture filebrowse audio rbd \
+            anim anim_gif anim_mp4 capture recboot filebrowse audio rbd \
             recovery gptrepair snapshots bls discover hotplug luks \
             verify crypto tpm selfheal loader_iface rawboot
 
@@ -90,6 +90,15 @@ FEAT_capture_SRC      := capture/capture.c capture/capture_png.c \
 FEAT_capture_SRC_GUI  := gui/gui_capture.c
 FEAT_capture_DEPS     := gui
 FEAT_capture_STUB     := stub_capture.c
+
+# Whole-boot recording: armed by \EFI\visor\rec.arm, writes one MJPEG+PCM AVI
+# per armed boot.  Leans on capture for the ESP file helpers and the growable
+# buffer, and taps hda.c for sound - but does not require audio, because a
+# silent video of the menu is still a video of the menu.
+FEAT_recboot_SRC      := capture/capture_jpeg.c capture/capture_avi.c \
+                         capture/capture_session.c
+FEAT_recboot_DEPS     := gui capture
+FEAT_recboot_STUB     := stub_recboot.c
 
 # filebrowse works in text mode too, so it does not require gui.
 FEAT_filebrowse_SRC     := browse/filebrowse.c browse/text_browse.c
@@ -223,7 +232,7 @@ PROFILE_hardened := gui fade blur clock pointer editor \
 # everything except the two heavyweight non-visual extras - and not rbd, which
 # is full-only (see FEAT_rbd_PROFILES); ricer keeps rbd's dependencies anyway.
 PROFILE_ricer    := gui fade screensaver blur clock pointer editor accent \
-                    anim anim_gif anim_mp4 capture filebrowse audio \
+                    anim anim_gif anim_mp4 capture recboot filebrowse audio \
                     discover bls hotplug luks verify crypto tpm \
                     recovery selfheal loader_iface rawboot
 PROFILE_full     := $(FEAT_ALL)

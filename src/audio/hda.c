@@ -45,6 +45,11 @@ int hda_play_end(void *handle) {
 
 int hda_probe(void) { return HDA_UNSUPPORTED; }
 
+int hda_tap(const INT16 **pcm, UINTN *frames, UINT64 *start_us) {
+    (void)pcm; (void)frames; (void)start_us;
+    return 0;
+}
+
 const CHAR16* hda_status_str(int code) {
     (void)code;
     return L"unsupported on this architecture";
@@ -1403,6 +1408,39 @@ static hda_t g_hda;
 static UINTN g_play_bytes;
 static UINTN g_active_bytes;
 
+/* --- recording tap --------------------------------------------------------
+ * Everything a recording needs to reconstruct what was audible is already
+ * known here: the sample buffer, how much of it is real sound, and the instant
+ * the DMA engine started. Publish it rather than making the recorder guess.
+ * Cleared alongside the stream so the pointer can never outlive the buffer.
+ */
+static const INT16 *g_tap_pcm;
+static UINTN        g_tap_frames;
+static UINT64       g_tap_start_us;
+static int          g_tap_started;
+
+static void hda_tap_set(const INT16 *pcm, UINTN active_frames) {
+    g_tap_pcm     = pcm;
+    g_tap_frames  = active_frames;
+    g_tap_start_us = 0;
+    g_tap_started = 0;
+}
+
+static void hda_tap_clear(void) {
+    g_tap_pcm      = NULL;
+    g_tap_frames   = 0;
+    g_tap_start_us = 0;
+    g_tap_started  = 0;
+}
+
+int hda_tap(const INT16 **pcm, UINTN *frames, UINT64 *start_us) {
+    if (!g_tap_pcm || !g_tap_started || !g_tap_frames) return 0;
+    if (pcm)      *pcm = g_tap_pcm;
+    if (frames)   *frames = g_tap_frames;
+    if (start_us) *start_us = g_tap_start_us;
+    return 1;
+}
+
 void* hda_play_prepare(const INT16 *pcm, UINTN frames, UINTN active_frames,
                        int *status) {
     int rc = HDA_HW_ERROR;
@@ -1411,6 +1449,7 @@ void* hda_play_prepare(const INT16 *pcm, UINTN frames, UINTN active_frames,
     for (UINTN i = 0; i < sizeof(g_hda); i++) ((UINT8*)&g_hda)[i] = 0;
     g_play_bytes = 0;
     g_active_bytes = 0;
+    hda_tap_clear();
 
     rc = hda_open(&g_hda, HDA_SETUP_BUDGET_MS);
     if (rc != HDA_OK) goto fail;
@@ -1424,12 +1463,14 @@ void* hda_play_prepare(const INT16 *pcm, UINTN frames, UINTN active_frames,
     g_play_bytes = frames * HDA_CHANNELS * sizeof(INT16);
     if (!active_frames || active_frames > frames) active_frames = frames;
     g_active_bytes = active_frames * HDA_CHANNELS * sizeof(INT16);
+    hda_tap_set(pcm, active_frames);
 
     if (status) *status = HDA_OK;
     return &g_hda;
 
 fail:
     hda_cleanup(&g_hda);
+    hda_tap_clear();
     if (status) *status = rc;
     return NULL;
 }
@@ -1449,6 +1490,8 @@ int hda_play_start(void *handle) {
 
     stream_start(&g_hda);
     g_stream_start_us = arch_now_us();
+    g_tap_start_us = g_stream_start_us;
+    g_tap_started = 1;
     return HDA_OK;
 }
 
@@ -1472,6 +1515,7 @@ void* hda_play_begin(const INT16 *pcm, UINTN frames, UINTN active_frames,
 int hda_play_cut(void *handle) {
     if (handle != &g_hda) return HDA_HW_ERROR;
     hda_cleanup(&g_hda);
+    hda_tap_clear();
     return HDA_OK;
 }
 
@@ -1480,12 +1524,14 @@ int hda_play_end(void *handle) {
 
     if (!g_hda.stream_running) {
         hda_cleanup(&g_hda);
+        hda_tap_clear();
         return HDA_OK;
     }
 
     int drained = stream_drain(&g_hda, g_active_bytes);
     int timed_out = !budget_left(&g_hda);
     hda_cleanup(&g_hda);
+    hda_tap_clear();
 
     if (drained != 0) return timed_out ? HDA_TIMEOUT : HDA_HW_ERROR;
     return HDA_OK;

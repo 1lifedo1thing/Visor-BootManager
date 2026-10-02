@@ -593,6 +593,12 @@ static void free_icon(icon_t *ic) {
 
 void gui_shutdown(gui_state_t *state) {
 
+    /* Every way out of the menu - boot, shutdown, reboot, firmware, rescue -
+     * lands here, and it is still before ExitBootServices, so this is where a
+     * boot recording gets closed out. The fade-out has already been captured
+     * by the time we are called. */
+    cap_session_finish();
+
     boot_entry_t *entry = state->entries;
     while (entry) {
         if (entry->icon) { free_icon(entry->icon); entry->icon = NULL; }

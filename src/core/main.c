@@ -13,6 +13,7 @@
 #include "efi_selfheal.h"
 #include "rbd.h"
 #include "menu_sound.h"
+#include "capture_rec.h"
 
 EFI_HANDLE IH;
 
@@ -334,6 +335,10 @@ EFI_STATUS efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table) {
     }
 
     if (!text_mode) {
+        /* Before the first pixel: if the ESP is armed, everything drawn from
+         * here on - easter egg, fade-in, menu, fade-out - is recorded. */
+        cap_session_arm();
+
         int rbd_played = rbd_check_and_play(&gui);
         if (!rbd_played &&
             menu_sound_prepare(config.menu_sound_on, config.menu_sound)) {
@@ -710,6 +715,11 @@ boot_selected:
     efi_print(L"Booting: ");
     efi_print(selected->name);
     efi_print(L"\r\n");
+
+    /* Last chance: visor_boot() may never come back, and a recording that is
+     * still open past ExitBootServices is a truncated file. Idempotent, so the
+     * usual close in gui_shutdown() stays the normal path. */
+    cap_session_finish();
 
     status = visor_boot(selected, ST);
 

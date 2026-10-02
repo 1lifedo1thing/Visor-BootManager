@@ -46,6 +46,8 @@ void gui_present(gui_state_t *state) {
 
     if (state->fb_fast) {
         blit_rows(state, 0, (INTN)state->screen_height);
+        cap_session_frame(state->backbuffer, state->screen_width,
+                          state->screen_height);
         return;
     }
 
@@ -56,10 +58,11 @@ void gui_present(gui_state_t *state) {
         0, 0, 0, 0,
         state->screen_width, state->screen_height,
         0);
-    if (!EFI_ERROR(s)) return;
-
-    if (gui_has_linear_fb(state))
+    if (EFI_ERROR(s) && gui_has_linear_fb(state))
         blit_rows(state, 0, (INTN)state->screen_height);
+
+    cap_session_frame(state->backbuffer, state->screen_width,
+                      state->screen_height);
 }
 
 void gui_present_band(gui_state_t *state, INTN y, INTN h) {
@@ -71,6 +74,8 @@ void gui_present_band(gui_state_t *state, INTN y, INTN h) {
 
     if (state->fb_fast) {
         blit_rows(state, y, h);
+        cap_session_frame(state->backbuffer, state->screen_width,
+                          state->screen_height);
         return;
     }
 
@@ -81,10 +86,13 @@ void gui_present_band(gui_state_t *state, INTN y, INTN h) {
         0, (UINTN)y, 0, (UINTN)y,
         state->screen_width, (UINTN)h,
         state->screen_width * sizeof(UINT32));
-    if (!EFI_ERROR(s)) return;
-
-    if (gui_has_linear_fb(state))
+    if (EFI_ERROR(s) && gui_has_linear_fb(state))
         blit_rows(state, y, h);
+
+    /* A band update still changes the screen, and the backbuffer already holds
+     * the whole of it - so the recorder sees the same picture the user does. */
+    cap_session_frame(state->backbuffer, state->screen_width,
+                      state->screen_height);
 }
 
 #define FB_FAST_THRESHOLD_US 20000

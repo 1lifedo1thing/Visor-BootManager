@@ -8,6 +8,7 @@
 #include "arch.h"
 #include "accent.h"
 #include "capture.h"
+#include "capture_rec.h"
 #include "gpt_disk.h"
 #include <efi.h>
 #include <efilib.h>

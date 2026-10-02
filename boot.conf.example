@@ -516,6 +516,26 @@ background=\EFI\visor\backgrounds\default.png
 #                                 if they would exceed the 20 MiB encoder
 #                                 budget; whatever was captured is still saved.
 #record_seconds=3
+#
+# Whole-boot recording (recboot feature, needs to be compiled in):
+#   Record the entire boot sequence — fade-in, menu, boot sound, fade-out —
+#   to a single MJPEG+PCM AVI in \EFI\visor\shots\. To arm it, drop an empty
+#   file called  rec.arm  (or  rec.arm.conf  with overrides) on the ESP at:
+#     \EFI\visor\rec.arm
+#   Visor deletes the marker as it starts, so it records exactly one boot and
+#   there is nothing to switch off afterwards.  Without the audio feature the
+#   video is silent.
+#
+#   Optional overrides inside rec.arm (one key=value per line, same syntax
+#   as boot.conf):
+#     fps       = 20     frames per second (default 20; min 5, max 30)
+#     width     = 960    max width in pixels, aspect preserved (default 960;
+#                        min 160, max 1920)
+#     quality   = 80     JPEG quality 20-100 (default 80)
+#
+#   To record: create the marker, reboot.  The file appears as
+#     \EFI\visor\shots\boot_<HHMMSS>.avi
+#   and can be played back with any standard video player (VLC, mpv, ffplay).
 
 # --- TPM2 measured boot ------------------------------------------------------
 # Measure boot artifacts into the TPM2 so a sealed disk or remote-attestation

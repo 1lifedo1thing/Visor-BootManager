@@ -226,6 +226,17 @@
       "section": "Screenshots and screen recording",
       "size_kb": { "x86_64": 20, "aarch64": 16 }
     },
+    "recboot": {
+      "summary": "Record the whole boot sequence to a video file",
+      "group": "Extras",
+      "detail": "Drop \\EFI\\visor\\rec.arm on the ESP and the next boot is recorded end to end - fade-in, menu, boot sound, fade-out - as a single MJPEG+PCM .avi in \\EFI\\visor\\shots. Visor deletes the marker as it starts, so it records exactly one boot and there is nothing to switch off afterwards. The marker may carry overrides: fps, width, quality. Sound is included when the audio feature is built in; without it the video is silent.",
+      "keys": [],
+      "entrykeys": [],
+      "hotkeys": [],
+      "cli": [],
+      "section": null,
+      "size_kb": { "x86_64": 21, "aarch64": 15 }
+    },
     "filebrowse": {
       "summary": "Browse and boot files from any readable filesystem (B)",
       "group": "Extras",
