@@ -368,7 +368,21 @@ typedef struct gui_state {
     INTN    cursor_x, cursor_y;
     INTN    cur_prev_x, cur_prev_y;
     int     cursor_saved;
-    UINT32  cursor_save[18 * 24];
+
+    /* What the pointer covered, lifted back out when it moves. Sized to the
+     * cursor box, so a themed image larger than the built-in arrow is fine. */
+    UINT32 *cursor_save;
+    UINTN   cursor_save_cap;
+
+    /* NULL means the built-in arrow. cursor_off_* is the top-left of the
+     * drawn box relative to cursor_x/cursor_y, which is the hotspot - the
+     * pixel the click actually lands on. */
+    icon_t *cursor_icon;
+    UINTN   cursor_px;
+    INTN    cursor_hot_x, cursor_hot_y;
+    INTN    cursor_off_x, cursor_off_y;
+    INTN    cursor_box_w, cursor_box_h;
+
     INTN    hit_x[32], hit_y[32], hit_w[32], hit_h[32];
     UINTN   hit_idx[32];
     int     hit_n;
@@ -429,6 +443,14 @@ void gui_shutdown(gui_state_t *state);
 void gui_set_background(gui_state_t *state, CHAR16 *path);
 
 void gui_set_logo(gui_state_t *state, CHAR16 *path);
+
+/* Replace the built-in arrow with an image. path NULL/empty restores the
+ * arrow; size 0 takes the image's own width. A negative hotspot centres it. */
+#define CURSOR_HOTSPOT_CENTER ((INTN)-1)
+#define CUR_MIN_PX 8
+#define CUR_MAX_PX 128
+void gui_set_cursor(gui_state_t *state, CHAR16 *path, UINTN size,
+                    INTN hot_x, INTN hot_y);
 
 void gui_apply_accent(gui_state_t *state);
 

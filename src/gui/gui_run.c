@@ -81,12 +81,7 @@ boot_entry_t* gui_run(gui_state_t *state) {
         }
 
         if (need_redraw) {
-            INTN ghost_y = -1;
-            if (state->cursor_saved) {
-                cursor_backing_restore(state, state->cur_prev_x - 1, state->cur_prev_y);
-                ghost_y = state->cur_prev_y;
-                state->cursor_saved = 0;
-            }
+            INTN ghost_y = cursor_lift(state);
             if (cap_overlay_live(state)) full_redraw = 1;
             gui_draw_menu(state, !full_redraw);
             if (state->editing) draw_editor_overlay(state);
@@ -120,6 +115,17 @@ boot_entry_t* gui_run(gui_state_t *state) {
                 start();
             }
 
+            /* Put the pointer into the backbuffer before anything reaches the
+             * screen. Painting it after the present instead leaves the cursor
+             * missing for the whole length of that blit - a full-screen one
+             * costs milliseconds - which is what reads as the cursor blinking
+             * out while the mouse moves. */
+            int cursor_on = (state->cursor_active && !state->editing);
+            if (cursor_on) {
+                cursor_compose(state);
+                cursor_on = state->cursor_saved;
+            }
+
             if (intro_fade && full_redraw && !state->editing) {
                 gui_fade_in_current(state);
                 intro_fade = 0;
@@ -128,16 +134,19 @@ boot_entry_t* gui_run(gui_state_t *state) {
             } else {
                 for (int b = 0; b < state->band_n; b++)
                     gui_present_band(state, state->band_y[b], state->band_h[b]);
-                if (ghost_y >= 0) gui_present_band(state, ghost_y, CUR_H);
+                if (ghost_y >= 0) gui_present_band(state, ghost_y, state->cursor_box_h);
 
                 if (state->clock_dirty)
                     gui_present_band(state, state->clock_y, state->clock_h);
+
+                /* The cursor can sit outside every band the menu just
+                 * redrew, so its own strip still has to be pushed out. */
+                if (cursor_on)
+                    gui_present_band(state, cursor_box_y(state), state->cursor_box_h);
             }
             if (state->editing) intro_fade = 0;
             need_redraw = state->anim_active || state->page_anim || state->hp_anim;
             full_redraw = 0;
-            if (state->cursor_active && !state->editing)
-                cursor_overlay(state);
         }
 
         if (!state->editing) {
@@ -619,6 +628,14 @@ void gui_shutdown(gui_state_t *state) {
     state->reboot_icon = NULL;
     free_icon(state->firmware_icon);
     state->firmware_icon = NULL;
+    free_icon(state->cursor_icon);
+    state->cursor_icon = NULL;
+    if (state->cursor_save) {
+        efi_free_pool(state->cursor_save);
+        state->cursor_save = NULL;
+        state->cursor_save_cap = 0;
+        state->cursor_saved = 0;
+    }
 
     if (state->background_path) {
         efi_free_pool(state->background_path);

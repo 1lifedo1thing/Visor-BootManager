@@ -75,6 +75,10 @@ EFI_STATUS config_parse(config_t *config) {
     config->autoboot = 0;
     config->mouse = 1;
     config->pointer_speed = 4;
+    config->cursor = NULL;
+    config->cursor_size = 0;
+    config->cursor_hot_x = 0;
+    config->cursor_hot_y = 0;
     config->file_log = 1;
     config->scan_existing = -1;
     config->scan_mode = SCAN_MODE_DEEP;

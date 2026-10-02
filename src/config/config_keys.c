@@ -78,6 +78,48 @@ static UINTN parse_pcr(CHAR16 *value, UINTN fallback) {
 int show_names_set;
 int center_info_set;
 
+/* "X,Y" (also accepts X:Y and X x Y), or "center"/"centre"/"middle" for a
+ * hotspot in the middle of the image - what a crosshair wants. Centre is
+ * carried as a negative value; gui_set_cursor resolves it once it knows the
+ * final rendered size. */
+static int parse_hotspot(CHAR16 *value, INTN *out_x, INTN *out_y) {
+    if (!value || !value[0]) return 0;
+
+    if (efi_strcmp(value, L"center") == 0 || efi_strcmp(value, L"centre") == 0 ||
+        efi_strcmp(value, L"middle") == 0) {
+        *out_x = CURSOR_HOTSPOT_CENTER;
+        *out_y = CURSOR_HOTSPOT_CENTER;
+        return 1;
+    }
+
+    if (efi_strcmp(value, L"topleft") == 0 || efi_strcmp(value, L"tip") == 0) {
+        *out_x = 0;
+        *out_y = 0;
+        return 1;
+    }
+
+    UINTN i = 0;
+    if (value[0] < '0' || value[0] > '9') return 0;
+    while (value[i] >= '0' && value[i] <= '9') i++;
+    if (value[i] != ',' && value[i] != ':' && value[i] != 'x' && value[i] != 'X')
+        return 0;
+
+    CHAR16 sep = value[i];
+    value[i] = '\0';
+    UINTN x = parse_uint(value);
+    value[i] = sep;
+
+    CHAR16 *rest = value + i + 1;
+    while (*rest == ' ') rest++;
+    if (*rest < '0' || *rest > '9') return 0;
+    UINTN y = parse_uint(rest);
+
+    if (x > CUR_MAX_PX || y > CUR_MAX_PX) return 0;
+    *out_x = (INTN)x;
+    *out_y = (INTN)y;
+    return 1;
+}
+
 void apply_global(config_t *config, CHAR16 *key, CHAR16 *value) {
     if (efi_strcmp(key, L"timeout") == 0) {
         config->timeout = (*value == '-') ? -1 : (INTN)parse_uint(value);
@@ -136,6 +178,21 @@ void apply_global(config_t *config, CHAR16 *key, CHAR16 *value) {
         if (speed < 1) speed = 1;
         if (speed > 20) speed = 20;
         config->pointer_speed = speed;
+    } else if (efi_strcmp(key, L"cursor") == 0 ||
+               efi_strcmp(key, L"cursor_image") == 0) {
+        if (config->cursor) efi_free_pool(config->cursor);
+        config->cursor = NULL;
+        if (value[0] != '\0' &&
+            efi_strcmp(value, L"default") != 0 &&
+            efi_strcmp(value, L"arrow") != 0 &&
+            efi_strcmp(value, L"none") != 0 &&
+            efi_strcmp(value, L"off") != 0)
+            config->cursor = dup_path(value);
+    } else if (efi_strcmp(key, L"cursor_size") == 0) {
+        config->cursor_size = parse_uint(value);
+    } else if (efi_strcmp(key, L"cursor_hotspot") == 0) {
+        if (!parse_hotspot(value, &config->cursor_hot_x, &config->cursor_hot_y))
+            efi_log(L"WARN: invalid cursor_hotspot (use X,Y or 'center')");
     } else if (efi_strcmp(key, L"scan_existing") == 0 ||
                efi_strcmp(key, L"hotplug_scan_existing") == 0) {
         config->scan_existing = (*value == '1' || *value == 't' || *value == 'y');

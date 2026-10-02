@@ -222,6 +222,24 @@ quiet=0
 # Alias: pointer_speed.
 #mouse_speed=4
 
+# Replace the built-in white arrow with your own cursor image. Takes a PNG or
+# BMP; a bare name resolves under \EFI\visor\. "default" (or "arrow") keeps the
+# built-in one. Use a square image with a transparent background - it is scaled
+# to a single square size, so a non-square source gets squashed. Setting this
+# from a theme file works too, so a theme can ship its own pointer.
+# Alias: cursor_image.
+#cursor=cursors/breeze.png
+
+# Rendered edge length of the cursor image in pixels. 0 = use the image's own
+# width. Clamped to 8-128. Has no effect on the built-in arrow.
+#cursor_size=24
+
+# Which pixel of the image is the actual pointer - the one a click lands on,
+# and the one the arrow's tip would be. "X,Y" in image pixels measured from the
+# top-left after cursor_size scaling, or "center" for the middle (what a
+# crosshair wants), or "topleft"/"tip" for the corner. Default is 0,0.
+#cursor_hotspot=0,0
+
 # Text font. Currently only "jetbrains" is bundled. Empty = default.
 #font=jetbrains
 

@@ -350,6 +350,9 @@ EFI_STATUS efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table) {
     gui.editor_enabled = config.editor;
     gui.mouse_enabled  = config.mouse;
     gui.pointer_speed  = config.pointer_speed;
+    if (!text_mode && config.mouse)
+        gui_set_cursor(&gui, config.cursor, config.cursor_size,
+                       config.cursor_hot_x, config.cursor_hot_y);
 
     if (config.remember_last && loader_pick == (UINTN)-1) {
         CHAR16 *last = efi_get_var_str(L"VisorLastEntry");

@@ -124,10 +124,47 @@ void draw_image_sized(gui_state_t *state, icon_t *icon,
     draw_image_sized_a(state, icon, x, y, size, 255);
 }
 
+/* draw_image_sized_a takes UINTN coordinates, so anything placed at a negative
+ * origin wraps to a huge value and silently draws nothing. The pointer needs a
+ * negative origin the moment a theme moves its hotspot off the top-left
+ * corner, so this variant takes signed coordinates and clips all four sides. */
+void draw_image_clipped_a(gui_state_t *state, icon_t *icon,
+                                 INTN x, INTN y, UINTN size, INTN master) {
+    if (!icon || !icon->pixels || icon->width == 0 || icon->height == 0 || size == 0)
+        return;
+    if (master <= 0) return;
+    if (master > 255) master = 255;
+
+    UINT32 *sc = icon_build_scaled(icon, size);
+    if (!sc) return;
+
+    for (UINTN j = 0; j < size; j++) {
+        INTN py = y + (INTN)j;
+        if (py < 0 || py >= (INTN)state->screen_height) continue;
+        for (UINTN i = 0; i < size; i++) {
+            INTN px = x + (INTN)i;
+            if (px < 0 || px >= (INTN)state->screen_width) continue;
+
+            UINT32 p = sc[j * size + i];
+            UINTN cov = (p >> 24) & 0xFF;
+            cov = cov * (UINTN)master / 255;
+            if (cov == 0) continue;
+            UINT8 sr = (p >> 16) & 0xFF, sg = (p >> 8) & 0xFF, sb = p & 0xFF;
+
+            UINT32 *dest = get_pixel(state, (UINTN)px, (UINTN)py);
+            if (!dest) continue;
+            UINT8 br = (*dest >> 16) & 0xFF, bg = (*dest >> 8) & 0xFF, bb = *dest & 0xFF;
+            UINT8 nr = (UINT8)((sr * cov + br * (255 - cov)) / 255);
+            UINT8 ng = (UINT8)((sg * cov + bg * (255 - cov)) / 255);
+            UINT8 nb = (UINT8)((sb * cov + bb * (255 - cov)) / 255);
+            *dest = (0xFFu << 24) | (nr << 16) | (ng << 8) | nb;
+        }
+    }
+}
+
 void draw_image_tinted_a(gui_state_t *state, icon_t *icon,
                                 UINTN x, UINTN y, UINTN size,
-                                color_t tint, INTN master) {
-    if (!icon || !icon->pixels || icon->width == 0 || icon->height == 0 || size == 0)
+                                color_t tint, INTN master) {    if (!icon || !icon->pixels || icon->width == 0 || icon->height == 0 || size == 0)
         return;
     if (master <= 0) return;
     if (master > 255) master = 255;

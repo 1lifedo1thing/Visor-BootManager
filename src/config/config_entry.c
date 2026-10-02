@@ -341,6 +341,7 @@ void config_free(config_t *config) {
     if (config->reboot_icon)   efi_free_pool(config->reboot_icon);
     if (config->firmware_icon) efi_free_pool(config->firmware_icon);
     if (config->menu_sound)    efi_free_pool(config->menu_sound);
+    if (config->cursor)        efi_free_pool(config->cursor);
     config->background = NULL;
     config->theme = NULL;
     config->title = NULL;
@@ -351,4 +352,5 @@ void config_free(config_t *config) {
     config->reboot_icon = NULL;
     config->firmware_icon = NULL;
     config->menu_sound = NULL;
+    config->cursor = NULL;
 }

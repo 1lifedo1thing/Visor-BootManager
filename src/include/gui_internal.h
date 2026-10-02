@@ -126,6 +126,8 @@ void draw_image_sized(gui_state_t *state, icon_t *icon,
 void draw_image_tinted_a(gui_state_t *state, icon_t *icon,
                                 UINTN x, UINTN y, UINTN size,
                                 color_t tint, INTN master);
+void draw_image_clipped_a(gui_state_t *state, icon_t *icon,
+                                 INTN x, INTN y, UINTN size, INTN master);
 
 static inline INTN scale_metric(INTN v, UINTN dh, UINTN size) {
     INTN num = v * (INTN)dh;
@@ -240,8 +242,22 @@ int clock_needs_tick(gui_state_t *state);
 void ss_draw_frame(gui_state_t *state);
 void ss_transition_to_saver(gui_state_t *state);
 void ss_transition_to_menu(gui_state_t *state, int was_blank);
+/* Box of the built-in arrow. A themed cursor uses its own square size, so
+ * everything below works off state->cursor_box_* rather than these. */
+#define CUR_W 18
 #define CUR_H 24
+
+static inline INTN cursor_box_x(gui_state_t *state) {
+    return state->cursor_x + state->cursor_off_x;
+}
+
+static inline INTN cursor_box_y(gui_state_t *state) {
+    return state->cursor_y + state->cursor_off_y;
+}
+
 void cursor_backing_restore(gui_state_t *state, INTN ox, INTN oy);
+INTN cursor_lift(gui_state_t *state);
+void cursor_compose(gui_state_t *state);
 void cursor_overlay(gui_state_t *state);
 void cursor_move(gui_state_t *state);
 void draw_editor_overlay(gui_state_t *state);

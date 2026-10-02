@@ -33,6 +33,9 @@ typedef struct {
     int   snapshots_mode;
     int   mouse;
     UINTN pointer_speed;
+    CHAR16 *cursor;
+    UINTN  cursor_size;
+    INTN   cursor_hot_x, cursor_hot_y;
     int   file_log;
     int   editor;
     int   autoboot;

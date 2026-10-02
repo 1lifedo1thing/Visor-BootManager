@@ -299,6 +299,18 @@ EFI_STATUS gui_init(gui_state_t *state) {
     state->cursor_active = 0;
     state->cursor_x = (INTN)state->screen_width / 2;
     state->cursor_y = (INTN)state->screen_height / 2;
+    state->cursor_saved = 0;
+    state->cursor_save = NULL;
+    state->cursor_save_cap = 0;
+    state->cursor_icon = NULL;
+    state->cursor_px = 0;
+    state->cursor_hot_x = state->cursor_hot_y = 0;
+
+    /* Built-in arrow: its tip is one pixel in from the left of the box. */
+    state->cursor_off_x = -1;
+    state->cursor_off_y = 0;
+    state->cursor_box_w = CUR_W;
+    state->cursor_box_h = CUR_H;
     state->hit_n = 0;
     {
         EFI_GUID spg = EFI_SIMPLE_POINTER_PROTOCOL_GUID;
