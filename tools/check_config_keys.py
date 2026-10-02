@@ -14,8 +14,8 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-CONFIG_KEYS_C = os.path.join(ROOT, "src", "config_keys.c")
-CONFIG_ENTRY_C = os.path.join(ROOT, "src", "config_entry.c")
+CONFIG_KEYS_C = os.path.join(ROOT, "src", "config", "config_keys.c")
+CONFIG_ENTRY_C = os.path.join(ROOT, "src", "config", "config_entry.c")
 SCHEMA = os.path.join(ROOT, "docs", "boot.conf.schema.json")
 EXAMPLE = os.path.join(ROOT, "boot.conf.example")
 

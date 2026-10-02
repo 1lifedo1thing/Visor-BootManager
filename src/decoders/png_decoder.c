@@ -67,6 +67,12 @@ static INTN huff_construct(huff_t *h, const UINT8 *length, INTN n) {
     INTN symbol, len, left;
     INT16 offs[MAXBITS + 1];
 
+    /* An incomplete code (left > 0) is still accepted - the fixed literal
+     * table is one - but then huff_decode can land on a slot no symbol was
+     * ever assigned to. Clear the table so that reads garbage-free instead of
+     * handing back whatever was on the stack. */
+    for (symbol = 0; symbol < 288; symbol++) h->symbol[symbol] = 0;
+
     for (len = 0; len <= MAXBITS; len++) h->count[len] = 0;
     for (symbol = 0; symbol < n; symbol++) h->count[length[symbol]]++;
     if (h->count[0] == n) return 0;

@@ -527,7 +527,8 @@ void apply_theme(config_t *config, CHAR16 *name) {
     while (*start) {
         CHAR16 *end = start;
         while (*end && *end != '\n') end++;
-        if (*end == '\n') *end = '\0';
+        int had_nl = (*end == '\n');
+        if (had_nl) *end = '\0';
         CHAR16 *cr = efi_strchr(start, '\r');
         if (cr) *cr = '\0';
 
@@ -543,6 +544,10 @@ void apply_theme(config_t *config, CHAR16 *name) {
                     apply_global(config, key, value);
             }
         }
+
+        /* A file with no trailing newline ends on the buffer's terminator;
+         * stepping past it would walk off the allocation. */
+        if (!had_nl) break;
         start = end + 1;
     }
     efi_free_pool(buf);

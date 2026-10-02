@@ -77,10 +77,15 @@ static int load_snapshots(config_t *config) {
     while (*start && line_count < 512) {
         CHAR16 *end = start;
         while (*end && *end != '\n') end++;
-        if (*end == '\n') *end = '\0';
+        int had_nl = (*end == '\n');
+        if (had_nl) *end = '\0';
         CHAR16 *cr = efi_strchr(start, '\r');
         if (cr) *cr = '\0';
         lines[line_count++] = start;
+
+        /* The last line of a file that does not end in a newline stops on the
+         * buffer's terminator; end + 1 would be past the allocation. */
+        if (!had_nl) break;
         start = end + 1;
     }
 

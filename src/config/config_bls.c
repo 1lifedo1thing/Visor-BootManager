@@ -141,7 +141,8 @@ static void bls_scan(EFI_FILE_PROTOCOL *root, EFI_HANDLE volume, CHAR16 *dir,
         while (*start) {
             CHAR16 *end = start;
             while (*end && *end != '\n') end++;
-            if (*end == '\n') *end = '\0';
+            int had_nl = (*end == '\n');
+            if (had_nl) *end = '\0';
             CHAR16 *cr = efi_strchr(start, '\r');
             if (cr) *cr = '\0';
             CHAR16 *line = trim(start);
@@ -158,6 +159,10 @@ static void bls_scan(EFI_FILE_PROTOCOL *root, EFI_HANDLE volume, CHAR16 *dir,
                 else if ((v = bls_field(line, L"architecture")))  { if (!r.arch)    r.arch    = efi_strdup(v); }
                 else if ((v = bls_field(line, L"sort-key")))      { if (!r.sort_key) r.sort_key = efi_strdup(v); }
             }
+
+            /* Without a trailing newline the line ends on the buffer's own
+             * terminator - stepping past it reads off the allocation. */
+            if (!had_nl) break;
             start = end + 1;
         }
         efi_free_pool(buf);
