@@ -26,7 +26,7 @@
 # is always compiled - see CORE_SRC at the bottom.
 
 FEAT_ALL := gui fade screensaver blur clock pointer editor accent \
-            anim anim_gif anim_mp4 capture recboot filebrowse audio rbd \
+            anim anim_gif anim_mp4 intro capture recboot filebrowse audio rbd \
             recovery gptrepair snapshots bls discover hotplug luks \
             verify crypto tpm selfheal loader_iface rawboot
 
@@ -82,6 +82,15 @@ FEAT_anim_mp4_SRC     := decoders/mp4_decoder.c decoders/mjpeg_decoder.c \
                           decoders/vbg_decoder.c
 FEAT_anim_mp4_DEPS    := anim
 FEAT_anim_mp4_STUB    := stub_anim_mp4.c
+
+# Boot splash played once before the menu.  Deliberately does NOT require
+# anim/anim_gif/anim_mp4: those decide what an intro_media path can decode,
+# which is a runtime question, so a build with no decoders still accepts
+# intro_media and simply draws the still-image case.  A clip the build cannot
+# decode falls through to the menu instead of failing the boot.
+FEAT_intro_SRC        := gui/gui_intro.c
+FEAT_intro_DEPS       := gui
+FEAT_intro_STUB       := stub_intro.c
 
 # ------------------------------------------------------------ interaction ---
 
@@ -232,7 +241,7 @@ PROFILE_hardened := gui fade blur clock pointer editor \
 # everything except the two heavyweight non-visual extras - and not rbd, which
 # is full-only (see FEAT_rbd_PROFILES); ricer keeps rbd's dependencies anyway.
 PROFILE_ricer    := gui fade screensaver blur clock pointer editor accent \
-                    anim anim_gif anim_mp4 capture recboot filebrowse audio \
+                    anim anim_gif anim_mp4 intro capture recboot filebrowse audio \
                     discover bls hotplug luks verify crypto tpm \
                     recovery selfheal loader_iface rawboot
 PROFILE_full     := $(FEAT_ALL)

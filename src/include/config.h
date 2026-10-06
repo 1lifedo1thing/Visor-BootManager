@@ -57,6 +57,13 @@ typedef struct {
     accent_spec_t sp_g_text, sp_g_icons, sp_g_underline, sp_all;
     CHAR16 *font;
     CHAR16 *background;
+    /* Boot intro: media path, automatic deadline in ms, and what to do when
+     * it finishes.  All inert unless intro_media is set. */
+    CHAR16 *intro_media;
+    UINTN   intro_duration;
+    int     intro_loop;
+    int     intro_auto_continue;
+    int     intro_boot;
     color_t bg_color;
     color_t fg_color;
     color_t highlight_color;

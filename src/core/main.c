@@ -14,6 +14,7 @@
 #include "rbd.h"
 #include "menu_sound.h"
 #include "capture_rec.h"
+#include "intro.h"
 
 EFI_HANDLE IH;
 
@@ -379,6 +380,8 @@ EFI_STATUS efi_main(EFI_HANDLE image_handle, EFI_SYSTEM_TABLE *system_table) {
     int gui_closed = 0;
     int force_menu = 0;
     int retry_selected = 0;
+    int intro_seen = 0;
+    int intro_boot = 0;
     boot_entry_t *bls_decremented = NULL;
     CHAR16 *saved_cmdline = NULL;
     CHAR16 *saved_kernel_path = NULL;
@@ -400,8 +403,30 @@ select_entry:
     selected = NULL;
     action = VISOR_ACTION_BOOT;
     autobooted = 0;
+    /* Cleared before the splash runs, so re-entering through a goto cannot
+     * inherit a previous pass's decision to boot straight away. */
+    intro_boot = 0;
 
-    if (!force_menu && config.autoboot && gui.entry_count >= 1) {
+    /* The splash plays once, before the first menu, and only when there is a
+     * menu to get to.  autoboot=1 and timeout=0 mean "no menu", so they
+     * bypass it rather than delaying a boot that was never going to wait. */
+    if (!intro_seen && !retry_selected && !text_mode && !gui_closed &&
+        config.intro_media && !config.autoboot && gui.timeout != 0) {
+        intro_seen = 1;
+        int intro_result = gui_show_intro(&gui, config.intro_media,
+                                          config.intro_duration,
+                                          config.intro_loop,
+                                          config.intro_auto_continue);
+        if (intro_result == INTRO_SKIPPED) {
+            /* The key that skipped the splash also cancels the menu
+             * countdown - the user is already waiting and just said so. */
+            gui.timeout_active = 0;
+        } else if (intro_result == INTRO_FINISHED) {
+            intro_boot = config.intro_boot;
+        }
+    }
+
+    if (!force_menu && (config.autoboot || intro_boot) && gui.entry_count >= 1) {
         EFI_INPUT_KEY abk;
         if (EFI_ERROR(ST->ConIn->ReadKeyStroke(ST->ConIn, &abk))) {
             UINTN pick = (gui.entry_count == 1) ? 0
@@ -409,10 +434,16 @@ select_entry:
             selected = gui.entries;
             for (UINTN i = 0; i < pick && selected; i++) selected = selected->next;
             autobooted = 1;
-            efi_log(L"main: autoboot - skipping menu, booting directly");
+            if (intro_boot)
+                efi_log(L"main: intro_action=boot - booting default entry directly");
+            else
+                efi_log(L"main: autoboot - skipping menu, booting directly");
             menu_sound_finish();
         } else {
-            efi_log(L"main: autoboot armed but a key was pressed - showing menu");
+            if (intro_boot)
+                efi_log(L"main: intro_action=boot cancelled by a key - showing menu");
+            else
+                efi_log(L"main: autoboot armed but a key was pressed - showing menu");
         }
     }
 

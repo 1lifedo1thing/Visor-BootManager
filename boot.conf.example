@@ -396,6 +396,39 @@ quiet=0
 # is taken from the first frame.
 background=\EFI\visor\backgrounds\default.png
 
+# --- Boot intro --------------------------------------------------------------
+# An optional clip or still shown once before the menu. Unset by default, and
+# inert until intro_media names a file - so adding these keys changes nothing
+# until you point one at real media.
+#
+# Formats: PNG and BMP always work. GIF needs the anim_gif feature, MP4/MOV/
+# M4V (MJPEG only, not H.264) and VBG need anim_mp4. A file this build cannot
+# decode is skipped and the menu opens normally; it never fails the boot.
+#intro_media=\EFI\visor\backgrounds\default.png
+#
+# Milliseconds until the intro hands over on its own, measured from the first
+# frame: loading and decoding a clip happen before the clock starts. Clamped
+# to 5000. Zero turns the intro off, even in manual mode.
+#intro_duration=2000
+#
+# Repeat the clip no matter what loop count the file carries. In automatic
+# mode the intro still ends at intro_duration.
+#intro_loop=0
+#
+# When 0, the intro waits for a key instead of continuing by itself, and
+# intro_duration stops being a deadline. A non-looping clip then holds its
+# last frame. Any key skips the intro and opens the menu.
+#intro_auto_continue=1
+#
+# Where a completed automatic intro leads: "menu" (default) opens the chooser
+# with timeout still counting, "boot" boots the already-selected entry without
+# showing it. A key always opens the menu, even with intro_action=boot.
+#
+# intro_image is an alias for intro_media. Keep autoboot=0 and timeout
+# nonzero or the intro is bypassed entirely - there would be no menu to skip
+# to. animation=0 shows the first frame without motion or fade.
+#intro_action=menu
+
 # --- Dynamic accent (palette from wallpaper) --------------------------------
 # Derive a Material You palette from the background image and apply it to the
 # UI - the same pipeline the caelestia shell uses for the desktop: the

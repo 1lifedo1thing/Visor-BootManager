@@ -346,6 +346,30 @@ void apply_global(config_t *config, CHAR16 *key, CHAR16 *value) {
     } else if (efi_strcmp(key, L"background") == 0) {
         if (config->background) efi_free_pool(config->background);
         config->background = dup_path(value);
+    } else if (efi_strcmp(key, L"intro_media") == 0 ||
+               efi_strcmp(key, L"intro_image") == 0) {
+        if (config->intro_media) efi_free_pool(config->intro_media);
+        config->intro_media = dup_path(value);
+    } else if (efi_strcmp(key, L"intro_duration") == 0) {
+        if (*value < '0' || *value > '9') {
+            efi_log(L"WARN: intro_duration is not a number, keeping the default");
+        } else {
+            UINTN ms = parse_uint(value);
+            /* A splash is not a boot stall. */
+            if (ms > 5000) {
+                ms = 5000;
+                efi_log(L"WARN: intro_duration clamped to 5000 ms");
+            }
+            config->intro_duration = ms;
+        }
+    } else if (efi_strcmp(key, L"intro_loop") == 0) {
+        config->intro_loop = (*value == '1' || *value == 't' || *value == 'y');
+    } else if (efi_strcmp(key, L"intro_auto_continue") == 0) {
+        config->intro_auto_continue = (*value == '1' || *value == 't' || *value == 'y');
+    } else if (efi_strcmp(key, L"intro_action") == 0) {
+        if (efi_strcmp(value, L"menu") == 0) config->intro_boot = 0;
+        else if (efi_strcmp(value, L"boot") == 0) config->intro_boot = 1;
+        else efi_log(L"WARN: invalid intro_action (menu/boot)");
     } else if (efi_strcmp(key, L"power_icons") == 0) {
         config->power_icons = (*value == '1' || *value == 't' || *value == 'y');
     } else if (efi_strcmp(key, L"power_icon_size") == 0) {

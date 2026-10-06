@@ -213,6 +213,17 @@
       "section": null,
       "size_kb": { "x86_64": 19, "aarch64": 15 }
     },
+    "intro": {
+      "summary": "Boot splash played once before the menu",
+      "group": "Boot splash",
+      "detail": "An optional intro_media clip or still, shown once before the menu, skippable with any key. Reuses the decoders already in the image, so an animated intro needs anim/anim_gif/anim_mp4 and a still needs nothing extra. Inert until intro_media is set.",
+      "keys": ["intro_media", "intro_duration", "intro_loop", "intro_auto_continue", "intro_action"],
+      "entrykeys": [],
+      "hotkeys": ["any key during the intro skips to the menu"],
+      "cli": [],
+      "section": "Boot intro",
+      "size_kb": { "x86_64": 4, "aarch64": 3 }
+    },
     "capture": {
       "summary": "Screenshots (F6) and GIF screen recording (F10)",
       "group": "Extras",

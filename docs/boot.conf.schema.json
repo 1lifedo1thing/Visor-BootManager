@@ -457,6 +457,44 @@
       "description": "Path to a full-screen background image (PNG, BMP, GIF or MP4). Animated GIFs and MJPEG MP4s play in a loop. Omit for a solid backdrop.",
       "$ref": "#/$defs/path"
     },
+    "intro_media": {
+      "x-feature": "intro",
+      "x-group": "intro",
+      "x-aliases": ["intro_image"],
+      "description": "Path to a boot intro shown once before the menu: PNG, BMP, GIF, MJPEG MP4/MOV/M4V or VBG. Still images need no extra features; a clip needs the matching decoder (anim_gif / anim_mp4). Unset, unreadable or undecodable means no intro - never a failed boot. Any key skips it.",
+      "$ref": "#/$defs/path"
+    },
+    "intro_duration": {
+      "x-feature": "intro",
+      "x-group": "intro",
+      "description": "Automatic intro deadline in milliseconds, measured from the first frame and excluding load and decode time. Clamped to 5000. Zero disables the intro even in manual mode.",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 5000,
+      "default": 2000
+    },
+    "intro_loop": {
+      "x-feature": "intro",
+      "x-group": "intro",
+      "description": "Repeat the clip regardless of the loop count stored in the file. Automatic mode still stops at intro_duration; with intro_auto_continue=0 it repeats until a key.",
+      "$ref": "#/$defs/bool",
+      "default": false
+    },
+    "intro_auto_continue": {
+      "x-feature": "intro",
+      "x-group": "intro",
+      "description": "Perform intro_action on its own when the intro ends. When false, the intro waits for a key - holding the last frame if not looping - and intro_duration stops being a deadline.",
+      "$ref": "#/$defs/bool",
+      "default": true
+    },
+    "intro_action": {
+      "x-feature": "intro",
+      "x-group": "intro",
+      "description": "What a successful automatic intro leads to: the chooser, or the already-selected default entry booted directly. A key always opens the chooser instead, whatever this says.",
+      "type": "string",
+      "enum": ["menu", "boot"],
+      "default": "menu"
+    },
     "background_color": {
       "x-feature": "gui",
       "x-group": "colors",

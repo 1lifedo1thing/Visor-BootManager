@@ -112,6 +112,11 @@ EFI_STATUS config_parse(config_t *config) {
     config->sp_all.mode = SPEC_UNSET;
     config->font = NULL;
     config->background = NULL;
+    config->intro_media = NULL;
+    config->intro_duration = 2000;
+    config->intro_loop = 0;
+    config->intro_auto_continue = 1;
+    config->intro_boot = 0;
     config->bg_color = (color_t){0x1a, 0x1a, 0x2e};
     config->fg_color = COLOR_WHITE;
     config->highlight_color = COLOR_BLUE;

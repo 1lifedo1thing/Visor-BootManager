@@ -332,6 +332,7 @@ void config_free(config_t *config) {
     config->entry_count = 0;
 
     if (config->background)    efi_free_pool(config->background);
+    if (config->intro_media)   efi_free_pool(config->intro_media);
     if (config->theme)         efi_free_pool(config->theme);
     if (config->title)         efi_free_pool(config->title);
     if (config->logo)          efi_free_pool(config->logo);
@@ -343,6 +344,7 @@ void config_free(config_t *config) {
     if (config->menu_sound)    efi_free_pool(config->menu_sound);
     if (config->cursor)        efi_free_pool(config->cursor);
     config->background = NULL;
+    config->intro_media = NULL;
     config->theme = NULL;
     config->title = NULL;
     config->logo = NULL;
