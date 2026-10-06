@@ -22,9 +22,10 @@ EXPLICIT_PROFILE=0
 EXPLICIT_FEATURES=0
 FORCE_PROFILE=0
 PROFILE_FROM_BINARY=0
-EFIFS_VERSION="${EFIFS_VERSION:-v1.12}"
+EFIFS_DEFAULT_VERSION="diskcache-1"
+EFIFS_VERSION="${EFIFS_VERSION:-$EFIFS_DEFAULT_VERSION}"
 EFIFS_URL_OVERRIDDEN="${EFIFS_URL:-}"
-EFIFS_URL="${EFIFS_URL:-https://github.com/pbatard/efifs/releases/download/$EFIFS_VERSION}"
+EFIFS_URL="${EFIFS_URL:-https://github.com/IO-ZetZor/EfiFs/releases/download/$EFIFS_VERSION}"
 CLI_DIR="${CLI_DIR:-/usr/local/bin}"
 DATA_DIR="${DATA_DIR:-/usr/share/visor}"
 DRY_RUN=0
@@ -1669,30 +1670,30 @@ boot_fs_type() {
 
 efifs_sha256_for() {
     case "$1" in
-        btrfs_aa64.efi) echo 92dae5f1d0f6055afb6fd851a438e6173e7a452582f9ff13038ad4f2bf5088b9 ;;
-        btrfs_x64.efi) echo 8ae24aa9f38f71a1e347fb6d0646b4678e04466aadab9919fb2ad133d5ee879c ;;
-        exfat_aa64.efi) echo 629e567847ba028cb6ba1f75af12b1ace2094a6b1e70cddbfe1a99a82cdd0511 ;;
-        exfat_x64.efi) echo 21a5969dcd7b6c149b1dc9408c591749ba9c62fb264e2852cc70061fe3defff6 ;;
-        ext2_aa64.efi) echo a472ec2641475dfcc2dff290472186c9d2424ae005a1a3c46809aac2785d146b ;;
-        ext2_x64.efi) echo e009f02f25b9c5ad3beaf0d3a04f89042985eea1d90187b888130a708c35ca61 ;;
-        f2fs_aa64.efi) echo df07c2bc9f485e8b01e707552852a6ee129e74e7085bd5547b29734ae4848beb ;;
-        f2fs_x64.efi) echo 74490317fbbb4c3f37072c1c1ab93557d1c8834c533690970c41b4310b4527cb ;;
-        hfsplus_aa64.efi) echo fa23cc880464ec5daeb669b7a3a373e524136e87459a5585c2ba23e59ddfe1fb ;;
-        hfsplus_x64.efi) echo 894d5b2985808d92ae8a5476fd942d39075f4730ac86d9c182e421208af5fbaf ;;
-        jfs_aa64.efi) echo 8f8d8388f34342eca7cf566f2b5bdcadd44bc6862d0ffb9cde3d3535e8d58a51 ;;
-        jfs_x64.efi) echo 716d6328ba85d29faa7de377dc61e5a154f3455b3680037b06ec2b025e8eba82 ;;
-        nilfs2_aa64.efi) echo 33a74897a89828fb5ad9f311b0942716438fadd2ba19cf642b692bcec30d970b ;;
-        nilfs2_x64.efi) echo 2c43afe61c5d1fa309cadf79b39a789eca7424b9ed0363efbb246664d6b51a4e ;;
-        ntfs_aa64.efi) echo 5eb1827942bdc8006a714d719b9c80268bb57095d7e484e9529f47781d68c672 ;;
-        ntfs_x64.efi) echo 59c37d5026ca14553a158939e3f2cf20286b6135a713a62c08b569ac9caedcb7 ;;
-        reiserfs_aa64.efi) echo 5cb5300186487fbb497497889674c585a6e93c9a189a3fcdaf9ec411e3c85439 ;;
-        reiserfs_x64.efi) echo d14fd72d34cd04163cd810d465394c6664f30b8c4b45e96fa8b1b974b2933ac0 ;;
-        ufs2_aa64.efi) echo aba8cc7949b77986071c37a9e49502b884a09700d4006913fe39c4840aefc0e1 ;;
-        ufs2_x64.efi) echo 5f916e9263fc32bccd4f1e82b62d4fb72bc4b99b19010b4d4962a87d30854157 ;;
-        xfs_aa64.efi) echo 82af528c35f464f106af40c39336e18ec6a8972bab16054d7e4b4959d11d80f7 ;;
-        xfs_x64.efi) echo f75d595d8037d0f5612b4eaec2d6f4a581353530a792d904c2c6988d358e07f6 ;;
-        zfs_aa64.efi) echo 8c710d400bb4d57129cc96363d21e42ea2ab1835ca52182840ef3ebcdf6c0b53 ;;
-        zfs_x64.efi) echo e61dae69979979977f2ffa30283b86526e54fed8ad240ee4c0529690b1e5342d ;;
+        btrfs_aa64.efi) echo ea4401759c51e04996814221bbe71dae87c62c20116ac547bee7f160eccae084 ;;
+        btrfs_x64.efi) echo 140f3fa8b959244f52ca05c10997100dc70955865dfe876732838ba0f58ac134 ;;
+        exfat_aa64.efi) echo bc327f1ca87f0e18f1e78eadacd9d9b779aa0ce362164dcf14aa7291bef045a3 ;;
+        exfat_x64.efi) echo 4914c7e94d83a10ad62462adfc5e797520b597fbdb533b550d5fcea0278e0292 ;;
+        ext2_aa64.efi) echo 5574b134fb3b31d689d12f5b19e6bedd96a3e3522fe831c9fcf9d002fa38f6fb ;;
+        ext2_x64.efi) echo 59cf3694c1a0824801642dceac6dddebd505ad6d01ddd9b6f697d4f08845ab70 ;;
+        f2fs_aa64.efi) echo 6bb47b7872ef1caeceb63ccb7476cc1163d689ad557fc0af23b0b1a55ae1a460 ;;
+        f2fs_x64.efi) echo 210d9e266cd23a910eb910745114b477cbbed3e331831d10470a4d86a6ce6b35 ;;
+        hfsplus_aa64.efi) echo 221c6db88d137d2d6b6ba5e215fbae17d13eb500f12ad86397e8acae761947bd ;;
+        hfsplus_x64.efi) echo b4440aa074bb590f5fbe2c0bf478f7b3494fdbea497664996bff5569490940c5 ;;
+        jfs_aa64.efi) echo bb26805fbe61614b16bf568175a4ef92247285a32b76c5ba8368136c541ae196 ;;
+        jfs_x64.efi) echo cde6de04aad26f96bc4d75509b8d10a8749538b93ee0656c2a3bcb5a620b863a ;;
+        nilfs2_aa64.efi) echo 692b9990560ba33384df35135977d9c1c5307ea084618fbe064e010828e2961d ;;
+        nilfs2_x64.efi) echo e030ac8aa881d38ad650e0a50d5f559869e43a9db6be476b8e6edbd551f88fd6 ;;
+        ntfs_aa64.efi) echo b1747590ffa476ce4a4a7319dc0660850ecca4ac9095e0bc5a801aa42d7c1780 ;;
+        ntfs_x64.efi) echo 0d9a202a9fc7068b86357e5f7a912558ec04765361a03b5b919a0a5f17f551c8 ;;
+        reiserfs_aa64.efi) echo dbf58cf20b4c509d33e539631a4ce9a2198ace20d813f3126594f777129246c2 ;;
+        reiserfs_x64.efi) echo 11a7c87438edb5a85b0000dcbba4ac29bb90c3135ae80e132be27278c527ffe9 ;;
+        ufs2_aa64.efi) echo c5888bb2af1c0ce66727dc71ddb4ed1dd3cb4b4d14f34acc9ebfb636042a4896 ;;
+        ufs2_x64.efi) echo 0c86ae72729aa7517a925e4eb37861fd1e205361116d239a3d30099d2cc1fc78 ;;
+        xfs_aa64.efi) echo 59302b58f5bf55d29e854aae1e73e76ec672ce235adf70f913f879ca6f3bb4fb ;;
+        xfs_x64.efi) echo 1eb88aa574b2cf431009159a51e8bd358d24c7281a2920fc14df014a2e7c5da1 ;;
+        zfs_aa64.efi) echo 6d7a07e278beec13b857fd1b2f12c44f2657338eebdd7a6353d8b597f688f7b2 ;;
+        zfs_x64.efi) echo 20968c9525560e1ad666cbcdb6a1629246c20914443404e06b84a7b074a8bd73 ;;
         *) echo "" ;;
     esac
 }
@@ -1776,7 +1777,7 @@ install_efifs_driver() {
         warn "Downloaded file is not an EFI binary - skipping driver install."
         return 1
     fi
-    if [ -z "${EFIFS_URL_OVERRIDDEN:-}" ] && [ "$EFIFS_VERSION" = "v1.12" ]; then
+    if [ -z "${EFIFS_URL_OVERRIDDEN:-}" ] && [ "$EFIFS_VERSION" = "$EFIFS_DEFAULT_VERSION" ]; then
         if ! efifs_verify_sha256 "$tmp" "$driver"; then
             rm -f "$tmp"
             warn "SHA-256 mismatch for $driver - refusing to install it."

@@ -139,7 +139,9 @@ licensed, built by [Farid](https://farid.is-a.dev).
 - **[gnu-efi](https://sourceforge.net/projects/gnu-efi/)** — the freestanding
   UEFI toolchain Visor builds on.
 - **[EfiFs](https://efi.akeo.ie/)** (Pete Batard) — the filesystem drivers
-  Visor can install for non-FAT volumes.
+  Visor can install for non-FAT volumes. Visor installs its own build of
+  these, from [IO-ZetZor/EfiFs](https://github.com/IO-ZetZor/EfiFs), which
+  adds a firmware read cache on top of upstream.
 - **[materialyoucolor](https://github.com/T-Dynamos/materialyoucolor-python)** —
   the reference Material You color implementation behind the wallpaper accent
   pipeline.
